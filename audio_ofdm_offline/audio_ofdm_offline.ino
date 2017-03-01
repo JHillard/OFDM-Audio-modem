@@ -1,7 +1,7 @@
 /** \mainpage FftMatlabTest.ino:
 
   The companion Matlab code implements the equivalent functions.
-  
+
   Data is exchanged in the following sequence:
   - Receives first command to set gain (cmd = 0) or offset (cmd = 1)
   - Receives second command to set gain (cmd = 0) or offset (cmd = 1)
@@ -131,19 +131,19 @@ int AdcDcOffsetRight = 0;
 /** \brief Setup function
 
   Allocate memory for input/output arrays.
-  
+
   Initialize OLED display and serial communication module.
 
 */
 void setup()
-{  
+{
     // Initialize the display
     disp.oledInit();
     disp.clear();
     disp.setline(0);
     disp.setOrientation(1);
     disp.print("Ready");
-    
+
     // Audio library is configured for non-loopback mode
     int status = AudioC.Audio(TRUE, BufferLength, BufferLength);
     // Set codec sampling rate:
@@ -157,11 +157,11 @@ void setup()
     //   SAMPLING_RATE_44_KHZ
     //   SAMPLING_RATE_48_KHZ (default)
     AudioC.setSamplingRate(SAMPLING_RATE_48_KHZ);
-    
+
     // Set ADC input gain (range: 0 to 100)
     // Set to 0 for line-input, set to 100 for passive microphone
     AudioC.setInputGain(0, 0);
-    
+
     // Connect to Matlab
     serial_connect(baudRate);
 }
@@ -179,27 +179,27 @@ void loop()
     int dataLength;
     const int *input;
     const long *inputLong;
-    
-    cmd.recv();        
+
+    cmd.recv();
     command = cmd.getCmd();
-    
+
     input = cmd.getDataIntPointer();
     inputLong = cmd.getDataLongPointer();
     dataLength = cmd.getDataIntLength();
-    
-    
+
+
     disp.clear();
     disp.setline(0);
     disp.print("Cmd ");
     disp.print((long)command);
     disp.print(": input = ");
-    
+
     if (dataLength <= maxDataLength)
     {
-        
+
         disp.setline(1);
         disp.print((long)dataLength);
-        
+
         switch(command)
         {
             case 0: // Send rx param
@@ -333,13 +333,13 @@ void loop()
             /******************************************************
              ******************* DSP MODE 2 ***********************
              ******************************************************/
-                
+
             // Your code here
-            
+
             /******************************************************
              ******************* DSP MODE 3 ***********************
              ******************************************************/
-             
+
             // Your code here
 
             /******************************************************
@@ -372,6 +372,17 @@ void loop()
                     serial_send_array(xcorrCaptureBuffer,2*BufferLength);
                 }
                 break;
+
+            case 504:  // Set ADC input gain (range: 0 to 100)
+                   // Set to 0 for line-input, set to 100 for passive microphone
+                    if (dataLength == 1)
+                        AudioC.setInputGain(input[0], input[0]);
+                    else
+                        if (dataLength == 2)
+                            AudioC.setInputGain(input[0], input[1]);
+                    break;
+
+
             default:
                 disp.clear();
                 disp.setline(0);
@@ -388,25 +399,25 @@ void loop()
 
 // Assume mono, only work on inputLeft
 void processAudio() {
-    
+
     // DC offset removal
     for(int n = 0; n < BufferLength; n++)
     {
         AudioC.inputLeft[n]  = AudioC.inputLeft[n]  - AdcDcOffsetLeft;
         AudioC.inputRight[n] = AudioC.inputRight[n] - AdcDcOffsetRight;
     }
-    
+
     // Receiver state machine
     if (startOFDM) {
         buffer.insert(AudioC.inputLeft);
         // Calculate the cross correlation
         if (!syncDone) {
             xcorrLength = 2*buffer.getNumElem();
-            
+
             syncThresh = syncProportion;
-            
+
             xcorrOF = SyncBlock::xcorr(buffer.getFullBuffer(),syncSymbolFlipped,xcorrOutput,xcorrLength,syncSymbolFlippedLength);
-            
+
             SyncBlock::absMax(xcorrOutput,xcorrLength,xcorrMaxVal,xcorrMaxInd);
             // Check if we need to update the Align index
             if ((xcorrMaxVal > syncThresh) && (xcorrMaxInd < RS.symbolLength + RS.cpSize + 1)) {
@@ -423,7 +434,7 @@ void processAudio() {
                 } else {
                     buffer.setAlignIndex(xcorrMaxInd);
                     syncDone = true;
-                    
+
                     // Capture cross correlation output
                     for(int i = 0; i < 2*BufferLength; i++) {
                         xcorrCaptureBuffer[i] = xcorrOutput[i];
@@ -471,15 +482,15 @@ void processAudio() {
             }
         }
     }
-    
-    // Audio buffer capture 
+
+    // Audio buffer capture
     if (GetAudioBufferFlag)
-    {   
+    {
         if (CaptureTriggerFlag == 0)
         {
             CaptureTriggerFlag = captureTrigger(AudioC.inputLeft, AudioC.inputRight, BufferLength);
         }
-        
+
         if (CaptureTriggerFlag == 1)
         {
             CaptureBufferIndex += 1;
@@ -488,7 +499,7 @@ void processAudio() {
                 AudioCaptureBufferLeft[n  + CaptureBufferIndex * BufferLength] = AudioC.inputLeft[n];
                 AudioCaptureBufferRight[n + CaptureBufferIndex * BufferLength] = AudioC.inputRight[n];
             }
-            
+
             if (CaptureBufferIndex >= NumCaptureBuffers - 1)
             {
                 GetAudioBufferFlag = 0;
