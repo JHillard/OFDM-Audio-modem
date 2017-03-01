@@ -184,7 +184,7 @@ if max(abs(real(h_freq))) > 1 || max(abs(imag(h_freq))) > 1
 end
 
 %% Receiver
-DSP_MODE = 1
+DSP_MODE = 2
 connected = 0;
 
 rx_buffer = SyncBuffer();
