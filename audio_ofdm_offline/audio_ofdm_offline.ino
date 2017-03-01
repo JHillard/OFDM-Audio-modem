@@ -334,8 +334,49 @@ void loop()
              ******************* DSP MODE 2 ***********************
              ******************************************************/
 
-            // Your code here
+            case 220: // Find sync (take xcorr and return max val and index)
+                int val_ind[2];
+                            
 
+                serial_send_array(val_ind, 2);
+                break;
+
+            case 230: // Take get alignedBuf + fft + extract data carrier
+                //align buffers via found sync
+                //demodulate given rfft
+                //extract data carriers via complex mult of QAM?
+                int demod_data_buffer[BufferLength];                            
+
+                serial_send_array(demod_data_buffer, BufferLength);
+                break;
+               
+               
+            case 240: //Channel Estimation, FEQ
+              //   rx_freq_resp = refSymbolFFT / rx_data_post_QAM
+              //   Do this for each data carrier
+              int freq_resp[FFT_length*num_DataCarriers];
+              
+  
+              serial_send_array(feq_resp, FFT_length*num_DataCarriers);
+              break;
+              
+              
+            case 250: //Apply FEQ
+              //rx_data_freq = rx_freq_resp .* rx_data_post_QAM;
+              int eq_data[BufferLength];
+              
+              
+              serial_send_array(eq_data, BufferLength);
+              break;            
+            
+            case 260: //QAM Demod
+              // rx_data(0, processedIndex) = qamdemod2(rx_data_feq, qamSize);
+  
+              
+              serial_send_array(demodded, BufferLength);
+              break;
+              
+              
             /******************************************************
              ******************* DSP MODE 3 ***********************
              ******************************************************/
