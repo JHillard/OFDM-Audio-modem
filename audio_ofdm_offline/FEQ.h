@@ -44,9 +44,12 @@ namespace FEQ {
     // c = (a.*b) * c
     void cmulq15(const int* a, const int* b, int *c, int length) {
         long long real,imag;
-        
-        // Your code here 
-    }
+        int t[MAX_BUFFER_SIZE];
+        for( int i=0; i<length; i++){
+         t[i] = FIXED_RND( FIXED_MUL(a[i], b[i]) );
+        }
+        cmul(t, c, length);
+    };
     
     
     // x is the fft of the ref symbol

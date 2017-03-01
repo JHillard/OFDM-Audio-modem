@@ -19,9 +19,21 @@ namespace RFFT {
     static int fftOutput[MAX_BUFFER_SIZE] = {0};
 
     void rfft_noscale(int *x, ushort nx) {
-    
-        // Your code here
+
+     int complex_x[MAX_BUFFER_SIZE*2];
+     for(int i=0; i<nx; i++){ //Interleaves real and complex numbers.
+      complex_x[i*2] = x[i];
+      complex_x[i*2+1] = 0; 
+     }
+
+       cfft( (DATA *)complex_x, nx, NOSCALE);
+       cbrev( (DATA *)complex_x, (DATA *)complex_x, nx);
+       
+     for(int i=0; i<nx; i++){ //Captures first half of signal
+      x[i] = complex_x[i];
+     }
     }
+    
     
 }
 

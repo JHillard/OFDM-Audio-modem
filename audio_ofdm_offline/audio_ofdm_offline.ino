@@ -34,6 +34,7 @@ static int FIXED_RND(long long a) {
     return ((a + (long long) (1 << (FIXED_FBITS - 1))) >> FIXED_FBITS);
 }
 
+
 // Baud rate
 const long baudRate = 115200;
 
@@ -346,7 +347,7 @@ void loop()
              ******************************************************/
 
             // Your code here
-            
+
             /******************************************************
              ******************* DEBUG COMMANDS *******************
              ******************************************************/
@@ -371,15 +372,6 @@ void loop()
                     serial_send_array(xcorrCaptureBuffer,2*BufferLength);
                 }
                 break;
-             case 504:  // Set ADC input gain (range: 0 to 100)
-                // Set to 0 for line-input, set to 100 for passive microphone
-                 if (dataLength == 1)
-                     AudioC.setInputGain(input[0], input[0]);
-                 else
-                     if (dataLength == 2)
-                         AudioC.setInputGain(input[0], input[1]);
-                 break;
-
             default:
                 disp.clear();
                 disp.setline(0);
