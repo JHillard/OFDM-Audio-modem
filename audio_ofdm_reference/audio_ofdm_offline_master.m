@@ -184,7 +184,7 @@ if max(abs(real(h_freq))) > 1 || max(abs(imag(h_freq))) > 1
 end
 
 %% Receiver
-DSP_MODE = 0
+DSP_MODE = 1
 connected = 0;
 
 rx_buffer = SyncBuffer();
@@ -204,8 +204,8 @@ figNum = 100;   % DSP related figures start from number figNum
 %% Stablish serial connection with DSP Shield
 if (DSP_MODE > 0)
     baud = 115200;
-    % comport = 'COM6';
-    comport = '/dev/tty.usbserial-145B';
+    comport = 'COM9';
+    %comport = '/dev/tty.usbserial-145B';
 
     % Connect to the DSP Shield using a handshake
     [s, connected] = serial_connect(comport, baud);

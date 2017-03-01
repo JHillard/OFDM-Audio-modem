@@ -5,8 +5,8 @@ close all; clear all;
 fs = 48000;
 
 baud = 115200;
-% comport = 'COM6';
-comport = '/dev/tty.usbserial-145B';
+comport = 'COM9';
+%comport = '/dev/tty.usbserial-145B';
 % comport = '/dev/tty.usbmodem1421';
 
 % Connect to the DSP Shield using a handshake
