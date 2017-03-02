@@ -344,31 +344,7 @@ void loop()
                 break;
 
             case 220: // Find sync (take xcorr and return max val and index)
-                /*
-                  int val_ind[2];
-                  int nx = buffer.getNumElem();
-                  int buff[maxDataLength] = buffer.getFullBuffer();
-                  SyncBlock::xcorrMax(buff, syncSymbolFlipped, xcorrLength, syncSymbolFlippedLength, nx, &xcorrMaxVal, &xcorrMaxInd);
-                  //int* data, int* syncSymbol, int* output, int outputLen, int syncSymLen,int dataLength, int &maxValue, int &maxIndex) {
-                  //xcorrOutput = SyncBlock::xcorr(buffer.getFullBuffer(),syncSymbolFlipped,xcorrOutput,xcorrLength,syncSymbolFlippedLength);
-                  //SyncBlock::absMax(xcorrOutput, xcorrLength, xcorrMaxVal)
-                  val_ind[0] =  xcorrMaxVal;
-                  val_ind[1] = xcorrMaxInd;
-                  serial_send_array(val_ind, 2); 
-                  
-                  //========================================================================================================
-                int output[2] = {0};
-                SyncBlock::absMax(xcorrOutput,xcorrLength,xcorrMaxVal,xcorrMaxInd);
-                // Check if we need to update the Align index
-                if ((xcorrMaxVal > syncThresh) && (xcorrMaxInd < RS.symbolLength + RS.cpSize + 1)) {
-                    // The +1 is b/c we want syncSymbol to align with data
-                    buffer.setAlignIndex(xcorrMaxInd);
-                }
-                output[0] = xcorrMaxVal;
-                output[1] = xcorrMaxInd;
-                serial_send_array(output,2);
-                break;
-                  */
+              
                   
                   // Calculate the cross correlation
                 // The reason there is no -1 is b/c 0st elem does not overlap
@@ -395,16 +371,7 @@ void loop()
                 //align buffers via found sync
                 //demodulate given rfft
                 //extract data carriers via complex mult of QAM?
-                /*buffer.setAlignIndex(xcorrMaxInd);
-                int data_buffer[maxDataLength] = buffer.getAlignedBuffer();
-                int nx = SyncBuffer::getNumElem
-                int demod_db[maxDataLength] = RFFT:rfft_noscale(data_buffer, nx);
-                int y[maxDataLength];
-                for( int i=dataCarrierLow; i <= dataCarrierHigh; i++){
-                  y[i-dataCarrierLow] = demod_db[i];
-                }
-                serial_send_array(y,nx);
-                */
+             
                 
                 const int *ptr2 = buffer.getAlignedBuffer();
                 fftOutputLength = 2*RS.fftSize;
@@ -442,45 +409,74 @@ void loop()
             break;
 
 
-/*
-            case 240: //Channel Estimation, FEQ
-              //   rx_freq_resp = refSymbolFFT / rx_data_post_QAM
-              //   Do this for each data carrier
-              //int freq_resp[FFT_length*num_DataCarriers];
-               FEQ::getFEQ(refSymbolFFT,rx_data_qam,FEQFrac,FEQExp,rx_data_qamLength);
-                copyBuffer(FEQFrac,output,rx_data_qamLength);
-                copyBuffer(FEQExp,output+rx_data_qamLength,rx_data_qamLength);
-                serial_send_array(output, 2*rx_data_qamLength);
-
-
-             // serial_send_array(feq_resp, FFT_length*num_DataCarriers);
-              break;
-
-
-            case 250: //Apply FEQ
-              //rx_data_freq = rx_freq_resp .* rx_data_post_QAM;
-              // int eq_data[BufferLength];
-              FEQ::applyFEQ(rx_data_qam,FEQFrac,FEQExp,rx_data_qamLength);
-              copyBuffer(rx_data_qam,output,rx_data_qamLength);
-              serial_send_array(output,rx_data_qamLength);
-              //  serial_send_array(eq_data, BufferLength);
-              break;
-
-            case 260: //QAM Demod
-              // rx_data(0, processedIndex) = qamdemod2(rx_data_feq, qamSize);
-
-            QAM::demod(rx_data_qam,demodSymbol,rx_data_qamLength);
-            demodSymbolLength = rx_data_qamLength/2;
-            serial_send_array(demodSymbol, demodSymbolLength);
-            break;
-            //  serial_send_array(demodded, BufferLength);
-*/
-
             /******************************************************
              ******************* DSP MODE 3 ***********************
              ******************************************************/
 
-            // Your code here
+              case 310: //Send Buffer
+                 buffer.insert(input);
+                const int* ptr4 = buffer.getFullBuffer();
+                for(int n = 0; n < dataLength; n++) {
+                    output[n] = ptr4[n];
+                }
+                
+                  if( !syncDone){
+                     xcorrLength = 2*buffer.getNumElem();
+                  syncThresh = syncProportion;
+                  SyncBlock::xcorr(buffer.getFullBuffer(),syncSymbolFlipped,xcorrOutput,xcorrLength,syncSymbolFlippedLength);
+                  copyBuffer(xcorrOutput,output,xcorrLength);
+                 
+                  // find max index and value
+                  SyncBlock::absMax(xcorrOutput,xcorrLength,xcorrMaxVal,xcorrMaxInd);
+                  // Check if we need to update the Align index
+                  if ((xcorrMaxVal > syncThresh) && (xcorrMaxInd < RS.symbolLength + RS.cpSize + 1)) {
+                      // The +1 is b/c we want syncSymbol to align with data
+                      buffer.setAlignIndex(xcorrMaxInd);
+                      syncDone = true;
+                  }
+                  }else{
+                    ptr2 = buffer.getAlignedBuffer();
+                    fftOutputLength = 2*RS.fftSize;
+                    for (int i = 0; i < 2*RS.fftSize; i++) {
+                        // Store symbol in fftOutput for inplace fft
+                        fftOutput[i] = ptr2[i];
+                    }
+                    RFFT::rfft_noscale(fftOutput,fftOutputLength);
+        
+                    rx_data_qamLength = 2*(RS.dataCarrierHigh - RS.dataCarrierLow + 1);
+                    index2 = 2*RS.dataCarrierLow;
+                    for (int i = 0; i < rx_data_qamLength; i++) {
+                        rx_data_qam[i] = fftOutput[index2];
+                        output[i] = fftOutput[index2];
+                        index2++;
+                    }
+                   // FEQ design (get FEQ)
+                     if(!feqdone){
+                          FEQ::getFEQ(refSymbolFFT,rx_data_qam,FEQFrac,FEQExp,rx_data_qamLength);
+                          copyBuffer(FEQFrac,output,rx_data_qamLength);
+                          copyBuffer(FEQExp,output+rx_data_qamLength,rx_data_qamLength);
+                          feqdone=true;
+                     }                     
+                  }
+                      
+              break;
+                            
+              case 320: 
+                   //else{                 
+                 // apply FEQ
+                  FEQ::applyFEQ(rx_data_qam,FEQFrac,FEQExp,rx_data_qamLength);
+                  copyBuffer(rx_data_qam,output,rx_data_qamLength);
+
+               // qamdemod
+                  QAM::demod(rx_data_qam,demodSymbol,rx_data_qamLength);
+                  demodSymbolLength = rx_data_qamLength/2;
+                  serial_send_array(demodSymbol, demodSymbolLength);
+             
+                  break;
+                  
+                    
+              
+              
 
             /******************************************************
              ******************* DSP MODE 4 ***********************
