@@ -157,7 +157,7 @@ void setup()
     //   SAMPLING_RATE_32_KHZ
     //   SAMPLING_RATE_44_KHZ
     //   SAMPLING_RATE_48_KHZ (default)
-    AudioC.setSamplingRate(SAMPLING_RATE_8_KHZ);
+    AudioC.setSamplingRate(SAMPLING_RATE_48_KHZ);
 
     // Set ADC input gain (range: 0 to 100)
     // Set to 0 for line-input, set to 100 for passive microphone
@@ -210,7 +210,8 @@ void loop()
                 RS.dataCarrierLow = input[3];
                 RS.dataCarrierHigh = input[4];
                 RS.symbolsPerTx = input[5];
-                // Parameter dependent setup
+                numSymbolsLeft = RS.symbolsPerTx;
+                // Parameter dependent setupymbol
                 RS.symbolLength = 2*RS.fftSize + RS.cpSize;
                 startOFDM = 0;
                 decodedData = new int[(RS.dataCarrierHigh - RS.dataCarrierLow + 1)*RS.symbolsPerTx];
@@ -495,9 +496,6 @@ void loop()
               
               
                serial_send_array( &dat_rate, dataLength);
-//              serial_send_array(input, dataLength);
-//              serial_send_array( (Booint *)input, dataLength);
-          //    serial_send_array(input, dataLength);
               break;
               
             case 410:
@@ -507,7 +505,7 @@ void loop()
               disp.clear();
               disp.setline(0);
               disp.print("Reciever Ready");
-              num_calls = 0;
+              num_calls = 0;    
               break;
                 
             case 420:
@@ -577,49 +575,64 @@ void processAudio() {
         AudioC.inputRight[n] = AudioC.inputRight[n] - AdcDcOffsetRight;
     }
     num_calls= num_calls+1;
-
-    // Receiver state machine
+    
+  // Receiver state machine
     if (startOFDM) {
         buffer.insert(AudioC.inputLeft);
         // Calculate the cross correlation
-          if( !syncDone){
-                  xcorrLength = 2*buffer.getNumElem();
-                  syncThresh = syncProportion;
-                  SyncBlock::xcorr(buffer.getFullBuffer(),syncSymbolFlipped,xcorrOutput,xcorrLength,syncSymbolFlippedLength);
-                  copyBuffer(xcorrOutput,output,xcorrLength);
-                 
-                  // find max index and value
-                  SyncBlock::absMax(xcorrOutput,xcorrLength,xcorrMaxVal,xcorrMaxInd);
-                  // Check if we need to update the Align index
-                  if ((xcorrMaxVal > syncThresh) && (xcorrMaxInd < RS.symbolLength + RS.cpSize + 1)) {
-                      // The +1 is b/c we want syncSymbol to align with data
-                      buffer.setAlignIndex(xcorrMaxInd);
-                      syncDone = true;
-                  }
-          }else{
-            const int * ptr = buffer.getAlignedBuffer();
+        if (!syncDone) {
+            xcorrLength = 2*buffer.getNumElem();
+            
+            syncThresh = syncProportion;
+            
+            xcorrOF = SyncBlock::xcorr(buffer.getFullBuffer(),syncSymbolFlipped,xcorrOutput,xcorrLength,syncSymbolFlippedLength);
+            
+            SyncBlock::absMax(xcorrOutput,xcorrLength,xcorrMaxVal,xcorrMaxInd);
+            // Check if we need to update the Align index
+            if ((xcorrMaxVal > syncThresh) && (xcorrMaxInd < RS.symbolLength + RS.cpSize + 1)) {
+                // First Check if there was overflow in the cross correlation calculation
+                if (xcorrOF == 1) {
+                    disp.clear();
+                    disp.setline(0);
+                    disp.print("Xcorr OFlow");
+                    disp.setline(1);
+                    disp.print("Lower Vol.");
+                    disp.clear();
+                    disp.setline(0);
+                    disp.print("OFDM: RUNNING");
+                } else {
+                    buffer.setAlignIndex(xcorrMaxInd);
+                    syncDone = true;
+                    
+                    // Capture cross correlation output
+                    for(int i = 0; i < 2*BufferLength; i++) {
+                        xcorrCaptureBuffer[i] = xcorrOutput[i];
+                    }
+                }
+            }
+        } else {
+            // Get aligned buffer
+            const int *ptr = buffer.getAlignedBuffer();
             fftOutputLength = 2*RS.fftSize;
             for (int i = 0; i < 2*RS.fftSize; i++) {
                 // Store symbol in fftOutput for inplace fft
                 fftOutput[i] = ptr[i];
             }
+            // Take fft
             RFFT::rfft_noscale(fftOutput,fftOutputLength);
-
+            // extract data carriers
             rx_data_qamLength = 2*(RS.dataCarrierHigh - RS.dataCarrierLow + 1);
             int index = 2*RS.dataCarrierLow;
             for (int i = 0; i < rx_data_qamLength; i++) {
                 rx_data_qam[i] = fftOutput[index];
-                output[i] = fftOutput[index];
                 index++;
             }
-           // FEQ design (get FEQ)
-             if(!feqdone){
-                  FEQ::getFEQ(refSymbolFFT,rx_data_qam,FEQFrac,FEQExp,rx_data_qamLength);
-                  copyBuffer(FEQFrac,output,rx_data_qamLength);
-                  copyBuffer(FEQExp,output+rx_data_qamLength,rx_data_qamLength);
-                  feqdone=true;
-             }else{
-               // Apply FEQ
+            // Design FEQ if necessary
+            if (!feqdone) {
+                FEQ::getFEQ(refSymbolFFT,rx_data_qam,FEQFrac,FEQExp,rx_data_qamLength);
+                feqdone = true;
+            } else {
+                // Apply FEQ
                 FEQ::applyFEQ(rx_data_qam,FEQFrac,FEQExp,rx_data_qamLength);
                 // Apply qamdemod
                 demodSymbolLength = rx_data_qamLength/2;
@@ -635,16 +648,8 @@ void processAudio() {
                     disp.setline(0);
                     disp.print("Done!");
                 }
-                
-                  
-               
-             }
-
-
-               
-          }
-    
-                             
+            }
+        }
     }
 
     // Audio buffer capture
