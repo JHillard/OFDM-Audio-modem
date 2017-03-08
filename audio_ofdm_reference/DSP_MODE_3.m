@@ -4,11 +4,9 @@ for n = 1:numRxSymbols
     rx_buffer = rx_buffer.insert(rx_data_cp(:, n));
     
     if (DSP_MODE == 3) && connected
-       cmd = 310 % send buffer
+       cmd = 310; % send buffer
        input = toQ15(rx_data_cp(:, n));
-       serial_cmd(s, cmd, [int16(input)], 'int16')
-     
-       
+       serial_cmd(s, cmd, [int16(input)], 'int16');
     end
     %% Synchronization
     if (~syncDone)
@@ -63,9 +61,9 @@ for n = 1:numRxSymbols
             rx_data(:, processedIndex) = qamdemod2(rx_data_feq, qamSize);
 
             if (DSP_MODE == 3) && connected
-                cmd = 320 % QAM demod
+                cmd = 320; % QAM demod
                 serial_cmd(s, cmd, [int16(0)], 'int16');
-                output = serial_recv_array(s, 'int16')
+                output = serial_recv_array(s, 'int16');
                 output_ref = rx_data(:, processedIndex);
                 
                 rx_data_dsp(:, processedIndex) = output;

@@ -1,19 +1,19 @@
 % A little bit more setup
 if (DSP_MODE == 4) && connected
     %% Send sampling rate
-    cmd = 400;
-    % Split up sampling rate because it may be bigger than 32k
-    serial_cmd(s, cmd, [int32(fs)], 'int32');
-    pause(0.25)
-    % Receive output
-    output = serial_recv_array(s, 'int32');
-    output_ref = fs;
-    FSError = sqrt(mean(abs(output - output_ref).^2))
+%    cmd = 400;
+%    % Split up sampling rate because it may be bigger than 32k
+%    serial_cmd(s, cmd, [int32(fs)], 'int32');
+%    pause(0.25)
+%    % Receive output
+%    output = serial_recv_array(s, 'int32');
+%    output_ref = fs;
+%    FSError = sqrt(mean(abs(output - output_ref).^2))
     
     %% Set ADC input gain (percent from 0 to 100)
     cmd = 504
-    gainLeft  = 0
-    gainRight = 0
+    gainLeft  = 10
+    gainRight = 10
     serial_cmd(s, cmd, [int16(gainLeft), int16(gainRight)], 'int16');
     pause(0.25)
     

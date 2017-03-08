@@ -8,7 +8,7 @@
 % * QAM modulation
 % * Map data to sub-carriers
 % * Modulation (IFFT)
-% * Add cyclic prefix
+% *  Add cyclic prefix
 %
 % *Channel*
 %
@@ -62,6 +62,7 @@ numBitsPerSymbol = numDataCarriers * dataBits;
 
 % ADC sampling frequency (used in DSP_MODE = 4 only) 
 fs = 48000;
+fs = 8000;
 
 %% Transmitter
 
@@ -73,7 +74,7 @@ tx_random_data = randi([0, qamSize - 1], numDataCarriers, numDataSymbols);
 tx_message_str = 'EE264 Lab'
 tx_message_data = str2data(tx_message_str, qamSize);
 
-% Overwrite random data with message data
+% Overwrite random data with message data-
 tx_random_data(1:length(tx_message_data), 1) = tx_message_data;
 
 % Concatenate sync, message and padding data
@@ -184,7 +185,7 @@ if max(abs(real(h_freq))) > 1 || max(abs(imag(h_freq))) > 1
 end
 
 %% Receiver
-DSP_MODE = 2
+DSP_MODE = 4
 connected = 0;
 
 rx_buffer = SyncBuffer();

@@ -1,12 +1,15 @@
+%% JAKE: USE VOLUME 14 and gain 20 on each
+
 %% Reset
-close all; clear all;
+%close all;
+clear all;
 
 %% Stablish serial connection with DSP Shield
 fs = 48000;
 
 baud = 115200;
-comport = 'COM9';
-%comport = '/dev/tty.usbserial-145B';
+ comport = 'COM9';
+% comport = '/dev/tty.usbserial-145B';
 % comport = '/dev/tty.usbmodem1421';
 
 % Connect to the DSP Shield using a handshake
@@ -15,8 +18,8 @@ comport = 'COM9';
 
 %% Set ADC input gain (percent from 0 to 100)
 cmd = 504
-gainLeft  = 0
-gainRight = 0
+gainLeft  = 20
+gainRight = 20
 
 if connected
     serial_cmd(s, cmd, [int16(gainLeft), int16(gainRight)], 'int16');
