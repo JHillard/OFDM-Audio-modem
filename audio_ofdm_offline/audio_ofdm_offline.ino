@@ -1,13 +1,105 @@
-/** \mainpage FftMatlabTest.ino:
+/** \file audio_ofdm_offline.ino
+/** \mainpage audio_ofdm_offline.ino:
 
-  The companion Matlab code implements the equivalent functions.
+  OFDM Modem; Project API.
 
-  Data is exchanged in the following sequence:
-  - Receives first command to set gain (cmd = 0) or offset (cmd = 1)
-  - Receives second command to set gain (cmd = 0) or offset (cmd = 1)
-  - Receives input array of integers
-  - Calculates the output = gain * input + offset
-  - Sends output vector
+  This project implements an orthogonal frequency division multiplexing OFDM
+  modem. These modems are a staple in telecommunications infrastructure and
+  provide an excellent tech demonstration for the power of the Fast Fourier
+  Transform FFT (please see companion report for details.)
+
+  This project holds four distinct modes of operation. Modes one through three
+  primarily verify individual system functionality via the Matlab
+  test harness (discussed in a moment). These modes are distinguished by serial
+  commands in the range of 10's, 200's, and 300's respectively. Mode 4 executes
+  commands in 400 range, and here actual OFDM control occurs. All
+  other commands are built for the matlab test harness.
+
+  The matlab companion code test harness gives serial commands to the OFDM modem.
+  It is also the transmitter side of the telecommunications demonstration, encoding
+  the information and translating that into audio for the laptop to play.
+
+
+\section Commands
+  command 0: Setup RX parameters.
+  command 1: Setup buffer.
+  command 2: Recieve sync symbol and store for later use.
+  command 3: Receive fft of reference symbol for FEQ design
+  command 4: Calculate the energy threshold for  the sync symbol.
+  DSP Mode 1 Commands:
+  command 10: Insert data into buffer.
+  command 20: Calculate the cross correlation between the buffer and the syncSymbol.
+  command 21: Find the max value and index of the cross correlation to compare to threshold.
+  command 22: Return the mean value of the buffer.
+  command 30: Return the FFT of the symbol at the synchronized index of the buffer.
+  command 40: Take the FFT of the variable output.
+  command 50: extract the data carriers by slicing the array containing the FFT of the output variable. These slices correspond to the carrier frequencies.
+  command 60: Designs the FEQ and returns it as an array.
+  command 70: Applies the FEQ to the extracted data carriers.  Returns an array of the result
+  command 80: Demodulates the QAM and sends the result as an array.
+  DSP Mode 2 Commands:
+  command 210: Sends the values found in the output buffer.
+  command 220: Synchronizes by taking the correlation and returning the max value and index of the operation.
+  command 230: Gets the synchronized buffer, performs a FFT, and extracts the data carriers.
+  command 240: Designs the FEQ and returns it as an array.
+  command 250: Applies the FEQ to the extracted data carriers.  Returns an array of the result
+  command 260: Demodulates the QAM and sends the result as an array.
+  DSP Mode 3 commands:
+  command 310: Applies state machine for the OFDM modem. The command retrieves the buffer and synchronizes on it if it hasn't already. Upon synchronization the command swithces states and takes the FFT of the buffer, and extracts the carrier frequencies. These carrier frequencies are then passed to the FEQ design block (assuming the FEQ has not already been designed). Essentially, this command prepares the modem to demodulate the data symbols inside a single transmission.
+  command 320: Applies the designed FEQ, and then demodualtes the filtered signal with the QAM:demod command. Command returns a demodulated data symbol.
+  DSP Mode 4 commands:
+  command 400: Sets the sampling rate for the Audio.C library.
+  command 410: Sets the state machine appropriately for the OFDM modem to begin its process of syncing, designing the FEQ, and demodulating the QAM data. The bulk of this work is done in the processAudio() ISR.
+  command 420: Sends the decoded data to the matlab test harness.
+  Debug Commands (used to tune the volumes and gains of the transmitter and reciever.):
+  command 500: Sets the states to begin capturing data from the AudioC library.
+  command 501: Sends the captured data to the matlab interface. Used to test for clipping and adjusting volumes.
+  command 502: Sets the offset of the ADC since its zero isn't truly at zero.
+  command 503: returns to matlab the outputs of the correlation used to find the sync symbol.
+  command 504: Sets the gain of the ADC input. Set to 0 for line-input (audio cord), set to 100 for a passive microphone.
+
+
+  Note: This experiment uses Q.15 fixed-point format throughout its code.
+
+  \section Mathematics
+  DFT algorithm used by RFFT.
+  \f$ y[k] = \frac{1}{scale_factor}  \sum_{i=0}^{nx-1}( cos(\frac{-2\pi ik}{nx}) + j sin( \frac{-2\pi i k}{nx} )) \f$
+
+  IDFT algorithm used by RIFFT.
+  \f$ y[k] = \frac{1}{scale_factor}  \sum_{i=0}^{nx-1}( cos(\frac{2\pi ik}{nx}) + j sin( \frac{2\pi i k}{nx} )) \f$
+
+  Complex mulitiplication algorithm:
+
+  Input \f$in1\f$ and \f$in2\f$ are broken into \f$(re1,im1)\f$ and \f$(re2,im2)\f$ respectively. The output
+  \f$ y[n] = (rout[n],iout[n]) \f$  is defined as follows:
+
+  \f$ rout[n] = re1[n]*re2[n] -im1[n]*im2[n] \f$
+
+  \f$ iout[n] = re1[n]*im2[n] + re2[n]*im1[n] \f$
+
+  Windowing is accomplished via complex multiplication of an input sequence and
+  a window via the above method.
+
+  Circular convolution is accomplished via DFTs of the input sequence,
+  a complex multiplication between each other, and an IDFT to pull it
+  back into the time domain. The algorithms behind each individual  step is
+   described above.
+
+\section Scaling
+  Each transform function above has an option to SCALE or NOSCALE.
+
+   FFT transformations (fft(), cfft(), rfft())
+  apply scaling as the following:
+   - NOSCALE:  \f$X[k] = \sum_{n = 0}^{N-1} x[n] e^{-j 2 k n / N}\f$
+   - SCALE:  \f$X[k] = \frac{1}{N} \sum_{n = 0}^{N-1} x[n] e^{-j 2 k n / N}\f$
+
+  For inverse FFt transromations (ifft(), rifft(), cifft() ):
+   - NOSCALE: \f$x[n] = \sum_{k = 0}^{N-1} X[k] e^{j 2 k n / N}\f$
+   - SCALE: \f$x[n] = \frac{1}{N} \sum_{k = 0}^{N-1} X[k] e^{j 2 k n / N}\f$
+
+
+
+
 */
 
 #include "Audio.h"
@@ -30,6 +122,8 @@ static long long FIXED_MUL(int a, int b) {
     return ((long long)a*(long long)b);
 }
 
+// Use long long data types, but round when appropriate. Typically used after
+//the MAC operation simulated by FIXED_MUL().
 static int FIXED_RND(long long a) {
     return ((a + (long long) (1 << (FIXED_FBITS - 1))) >> FIXED_FBITS);
 }
@@ -169,11 +263,8 @@ void setup()
 
 /** \brief Main application loop
 
-  - Receives two serial commands from Matlab
-    - Commands can set the gain or offset
-    - 0: sets the filter coefficients and clears the filter state
-    - 1: receives inout vector, filters input and sends output
-*/
+  - Receives all serial commands from Matlab. For a list of all commands, please visit the main page, section 'Commands'.
+    */
 void loop()
 {
     int command;
@@ -346,15 +437,15 @@ void loop()
                 break;
 
             case 220: // Find sync (take xcorr and return max val and index)
-              
-                  
+
+
                   // Calculate the cross correlation
                 // The reason there is no -1 is b/c 0st elem does not overlap
                 xcorrLength = 2*buffer.getNumElem();
                 syncThresh = syncProportion;
                 SyncBlock::xcorr(buffer.getFullBuffer(),syncSymbolFlipped,xcorrOutput,xcorrLength,syncSymbolFlippedLength);
                 copyBuffer(xcorrOutput,output,xcorrLength);
-               
+
                 // find max index and value
                 SyncBlock::absMax(xcorrOutput,xcorrLength,xcorrMaxVal,xcorrMaxInd);
                 // Check if we need to update the Align index
@@ -366,15 +457,15 @@ void loop()
                 output[1] = xcorrMaxInd;
                 serial_send_array(output,2);
                 break;
-                
-                
+
+
 
             case 230: // Take get alignedBuf + fft + extract data carrier
                 //align buffers via found sync
                 //demodulate given rfft
                 //extract data carriers via complex mult of QAM?
-             
-                
+
+
                 const int *ptr2 = buffer.getAlignedBuffer();
                 fftOutputLength = 2*RS.fftSize;
                 for (int i = 0; i < 2*RS.fftSize; i++) {
@@ -390,7 +481,7 @@ void loop()
                     output[i] = fftOutput[index2];
                     index2++;
                 }
-                serial_send_array(output, rx_data_qamLength);            
+                serial_send_array(output, rx_data_qamLength);
                 break;
 
         case 240: // FEQ design (get FEQ)
@@ -421,13 +512,13 @@ void loop()
                 for(int n = 0; n < dataLength; n++) {
                     output[n] = ptr4[n];
                 }
-                
+
                   if( !syncDone){
                      xcorrLength = 2*buffer.getNumElem();
                   syncThresh = syncProportion;
                   SyncBlock::xcorr(buffer.getFullBuffer(),syncSymbolFlipped,xcorrOutput,xcorrLength,syncSymbolFlippedLength);
                   copyBuffer(xcorrOutput,output,xcorrLength);
-                 
+
                   // find max index and value
                   SyncBlock::absMax(xcorrOutput,xcorrLength,xcorrMaxVal,xcorrMaxInd);
                   // Check if we need to update the Align index
@@ -444,7 +535,7 @@ void loop()
                         fftOutput[i] = ptr2[i];
                     }
                     RFFT::rfft_noscale(fftOutput,fftOutputLength);
-        
+
                     rx_data_qamLength = 2*(RS.dataCarrierHigh - RS.dataCarrierLow + 1);
                     index2 = 2*RS.dataCarrierLow;
                     for (int i = 0; i < rx_data_qamLength; i++) {
@@ -458,13 +549,13 @@ void loop()
                           copyBuffer(FEQFrac,output,rx_data_qamLength);
                           copyBuffer(FEQExp,output+rx_data_qamLength,rx_data_qamLength);
                           feqdone=true;
-                     }                     
+                     }
                   }
-                      
+
               break;
-                            
-              case 320: 
-                   //else{                 
+
+              case 320:
+                   //else{
                  // apply FEQ
                   FEQ::applyFEQ(rx_data_qam,FEQFrac,FEQExp,rx_data_qamLength);
                   copyBuffer(rx_data_qam,output,rx_data_qamLength);
@@ -473,12 +564,12 @@ void loop()
                   QAM::demod(rx_data_qam,demodSymbol,rx_data_qamLength);
                   demodSymbolLength = rx_data_qamLength/2;
                   serial_send_array(demodSymbol, demodSymbolLength);
-             
+
                   break;
-                  
-                    
-              
-              
+
+
+
+
 
             /******************************************************
              ******************* DSP MODE 4 ***********************
@@ -493,11 +584,11 @@ void loop()
               disp.print("Sampling Rate:");
               disp.setline(1);
               disp.print((long)dat_rate);
-              
-              
+
+
                serial_send_array( &dat_rate, dataLength);
               break;
-              
+
             case 410:
               startOFDM = 1;
               syncDone = 0;
@@ -505,13 +596,13 @@ void loop()
               disp.clear();
               disp.setline(0);
               disp.print("Reciever Ready");
-              num_calls = 0;    
+              num_calls = 0;
               break;
-                
+
             case 420:
               serial_send_array(decodedData, decodedDataLength);
               break;
-              
+
 
             /******************************************************
              ******************* DEBUG COMMANDS *******************
@@ -566,6 +657,14 @@ void loop()
 }
 
 // Assume mono, only work on inputLeft
+/*
+ISR triggered by the AudioC library. The processAudio() method by default migrates all the captured
+audio data into buffers useable by the OFDM. When triggered, this method also contains calls to the
+OFDM methods. It will perform the synchronization, design the FEQ and apply and demodulate the data
+symbols appropriately.
+
+It accepts and returns no inputs. All varaibles are modified in place and access by the serial commands outlined in the commands sections.
+*/
 void processAudio() {
 
     // DC offset removal
@@ -575,18 +674,18 @@ void processAudio() {
         AudioC.inputRight[n] = AudioC.inputRight[n] - AdcDcOffsetRight;
     }
     num_calls= num_calls+1;
-    
+
   // Receiver state machine
     if (startOFDM) {
         buffer.insert(AudioC.inputLeft);
         // Calculate the cross correlation
         if (!syncDone) {
             xcorrLength = 2*buffer.getNumElem();
-            
+
             syncThresh = syncProportion;
-            
+
             xcorrOF = SyncBlock::xcorr(buffer.getFullBuffer(),syncSymbolFlipped,xcorrOutput,xcorrLength,syncSymbolFlippedLength);
-            
+
             SyncBlock::absMax(xcorrOutput,xcorrLength,xcorrMaxVal,xcorrMaxInd);
             // Check if we need to update the Align index
             if ((xcorrMaxVal > syncThresh) && (xcorrMaxInd < RS.symbolLength + RS.cpSize + 1)) {
@@ -603,7 +702,7 @@ void processAudio() {
                 } else {
                     buffer.setAlignIndex(xcorrMaxInd);
                     syncDone = true;
-                    
+
                     // Capture cross correlation output
                     for(int i = 0; i < 2*BufferLength; i++) {
                         xcorrCaptureBuffer[i] = xcorrOutput[i];
@@ -696,7 +795,14 @@ void processAudio() {
         }
     }
 }
+/*
+captureTrigger monitors the values found in the audio buffers. When any value
+found is above CaptureThreshold, the flag is set and processAudio begins sampling.
+This helps filter out all the low level noise we might see when nothing is being transmitted.
 
+It recieves pointers to the left and right buffers, along with their length. It outputs a 1 if
+the modem should start capturing the data, otherwise, returns 0.
+*/
 int captureTrigger(const int* leftBuffer, const int* rightBuffer, int length)
 {
     int flag = 0;
@@ -710,7 +816,9 @@ int captureTrigger(const int* leftBuffer, const int* rightBuffer, int length)
     }
     return flag;
 }
-
+/*
+copyBuffer copies the buffer of one array to another. It recieves two input pointers and a length, and copies all values source[0<n<length-1] to the destination.
+*/
 void copyBuffer(const int* source, int* dest, int length) {
     for (int i = 0; i < length; i++) {
         dest[i] = source[i];
