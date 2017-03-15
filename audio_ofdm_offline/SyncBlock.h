@@ -1,3 +1,9 @@
+
+/** \file syncBlock.h
+Library for data buffer synchronization. Once the data is stored,
+this library handles all the correlations, mean calculations, etc to perform
+the synchronization.
+*/
 //
 //  SyncBlock.h
 //
@@ -21,17 +27,21 @@
 
 namespace SyncBlock {
 
-    // Use long long to multiply to simulate MAC behavior
+  /** \brief
+     Use long long to multiply to simulate MAC behavior
+*/
     static long long FIXED_MUL(int a, int b) {
         return ((long long)a*(long long)b);
     }
-
-    // Use long long and simulate round-off. Typically used after the MAC operation simulated by FIXED_MUL.
+  /** \brief
+   Use long long and simulate round-off. Typically used after the MAC operation simulated by FIXED_MUL.
+*/
     static int FIXED_RND(long long a) {
         return ((a + (long long) (1 << (FIXED_FBITS - 1))) >> FIXED_FBITS);
     }
-
-    //returns the mean of the input array data. Requires length of data and pointer to data as input.
+  /** \brief
+    returns the mean of the input array data. Requires length of data and pointer to data as input.
+*/
     int mean(const int* data, int length) {
         long long result = 0;
         for (int i = 0; i < length; i++) {
@@ -40,21 +50,29 @@ namespace SyncBlock {
         result /= length;
         return result;
     }
-    //Demeans an array of data. Requires length of data and pointer to data as input.
+  /** \brief
+    Demeans an array of data. Requires length of data and pointer to data as input.
+*/
     void subtractMean(int* data, int length) {
         int m = mean(data,length);
         for (int i = 0; i < length; i++) {
             data[i] -= m;
         }
     }
+  /** \brief
+  Performs the correlation between input data and known syncSymbol.
+     Variable dataLength should be even.
+     Requires pointer to data, pointer to syncSymbol, pointer to output of correlation.
+     Also requires the integers outputLen, syncSymLen. They are used in the manner their name suggests.
 
-    // dataLength should be even
+*/
     ushort xcorr(const int* data, int* syncSymbol, int* output, int outputLen, int syncSymLen) {
       return convol1((DATA *)data, (DATA *)syncSymbol, (DATA *)output, outputLen, syncSymLen);
         return 0;
     };
-
-    // Linear search for maximum
+  /** \brief
+     Linear search for maximum
+*/
     void absMax(const int* array, int length, int &maxValue, int &maxIndex) {
        // If length is less than 1, do nothing (return)
       if(length<1) return;
@@ -71,21 +89,25 @@ namespace SyncBlock {
         maxValue = (array[mi]);
         maxIndex = mi;
     };
-
-    // Linear search for maximum
+  /** \brief
+     Linear search for maximum
+*/
     void absMax(const int* array, int length, int &maxValue) {
         int maxIndex;
         absMax(array,length,maxValue, maxIndex);
     };
-   //Takes the correlation of an input data and the sync symbol, and stores the max value and index of the correlation in maxValue and maxIndex.
-   //Requires input data pointer, length of input pointer, the syncSymbol, length of the syncSymbol, as well as pointers to the output of the correlation. The addresses of maxValue and maxIndex are also required.
+  /** \brief
+   Takes the correlation of an input data and the sync symbol, and stores the max value and index of the correlation in maxValue and maxIndex.
+   Requires input data pointer, length of input pointer, the syncSymbol, length of the syncSymbol, as well as pointers to the output of the correlation. The addresses of maxValue and maxIndex are also required.
+*/
     void xcorrMax(int* data, int* syncSymbol, int* output, int outputLen, int syncSymLen,int dataLength, int &maxValue, int &maxIndex) {
         xcorr(data,syncSymbol,output,outputLen,syncSymLen);
         absMax(output,outputLen,maxValue,maxIndex);
     };
-
-    //Calculates the energy of a signal stored in array a. Requires length.
-    //Total energy calculated via the sum from 0 to length-1 of a[n]^2.
+  /** \brief
+    Calculates the energy of a signal stored in array a. Requires length.
+    Total energy calculated via the sum from 0 to length-1 of a[n]^2.
+*/
     int calculateEnergy(const int* a, int length) {
 
       //Energy = sum(n=0:Length, a[n]^2 )

@@ -1,3 +1,7 @@
+/** \file RFFT.h
+Library to perform the RFFT.
+*/
+
 //
 //  RFFT.h
 //
@@ -18,8 +22,10 @@ namespace RFFT {
 
     static int fftOutput[MAX_BUFFER_SIZE] = {0};
 
-    //Performns an in-place real FFT on input array x. Requires nx, number of real values and pointer x.
-    //Performs the real fft by interleaving imaginary zeros into the array, and performing the hardware accelerated complex fft cfft().
+    /** \brief
+    Performns an in-place real FFT on input array x. Requires nx, number of real values and pointer x.
+    Performs the real fft by interleaving imaginary zeros into the array, and performing the hardware accelerated complex fft cfft().
+*/
     void rfft_noscale(int *x, ushort nx) {
 
      int complex_x[MAX_BUFFER_SIZE*2];

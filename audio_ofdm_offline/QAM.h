@@ -1,3 +1,9 @@
+/** \file QAM.h
+
+  Holds the QAM constellation and performs demodulation of the data carriers.
+
+*/
+
 //
 //  QAM.h
 //
@@ -74,8 +80,10 @@ namespace QAM {
         {3,3,3,3,3,3,3,3,3,7,7,7,7,7,7,7,7,11,11,11,11,11,11,11,11,15,15,15,15,15,15,15,15},
         {3,3,3,3,3,3,3,3,3,7,7,7,7,7,7,7,7,11,11,11,11,11,11,11,11,15,15,15,15,15,15,15,15}
     };*/
-    //Demodulates a recieved input and stores it in output. Requires pointers to input and output, along with the inputLength.
-    //Demodulation performed on the extracted data carriers. By default the QAM constellation is of symbol size four, and can be found in the qamTable variable.
+      /** \brief
+      Demodulates a recieved input and stores it in output. Requires pointers to input and output, along with the inputLength.
+    Demodulation performed on the extracted data carriers. By default the QAM constellation is of symbol size four, and can be found in the qamTable variable.
+    */
     void demod(const int *input, int* output, int inputLength) {
         int real_col, imag_row;
         int j = 0;

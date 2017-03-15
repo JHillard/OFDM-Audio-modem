@@ -21,61 +21,63 @@
 
 
 \section Commands
-  command 0: Setup RX parameters.
-  command 1: Setup buffer.
-  command 2: Recieve sync symbol and store for later use.
-  command 3: Receive fft of reference symbol for FEQ design
-  command 4: Calculate the energy threshold for  the sync symbol.
-  DSP Mode 1 Commands:
-  command 10: Insert data into buffer.
-  command 20: Calculate the cross correlation between the buffer and the syncSymbol.
-  command 21: Find the max value and index of the cross correlation to compare to threshold.
-  command 22: Return the mean value of the buffer.
-  command 30: Return the FFT of the symbol at the synchronized index of the buffer.
-  command 40: Take the FFT of the variable output.
-  command 50: extract the data carriers by slicing the array containing the FFT of the output variable. These slices correspond to the carrier frequencies.
-  command 60: Designs the FEQ and returns it as an array.
-  command 70: Applies the FEQ to the extracted data carriers.  Returns an array of the result
-  command 80: Demodulates the QAM and sends the result as an array.
-  DSP Mode 2 Commands:
-  command 210: Sends the values found in the output buffer.
-  command 220: Synchronizes by taking the correlation and returning the max value and index of the operation.
-  command 230: Gets the synchronized buffer, performs a FFT, and extracts the data carriers.
-  command 240: Designs the FEQ and returns it as an array.
-  command 250: Applies the FEQ to the extracted data carriers.  Returns an array of the result
-  command 260: Demodulates the QAM and sends the result as an array.
-  DSP Mode 3 commands:
-  command 310: Applies state machine for the OFDM modem. The command retrieves the buffer and synchronizes on it if it hasn't already. Upon synchronization the command swithces states and takes the FFT of the buffer, and extracts the carrier frequencies. These carrier frequencies are then passed to the FEQ design block (assuming the FEQ has not already been designed). Essentially, this command prepares the modem to demodulate the data symbols inside a single transmission.
-  command 320: Applies the designed FEQ, and then demodualtes the filtered signal with the QAM:demod command. Command returns a demodulated data symbol.
-  DSP Mode 4 commands:
-  command 400: Sets the sampling rate for the Audio.C library.
-  command 410: Sets the state machine appropriately for the OFDM modem to begin its process of syncing, designing the FEQ, and demodulating the QAM data. The bulk of this work is done in the processAudio() ISR.
-  command 420: Sends the decoded data to the matlab test harness.
-  Debug Commands (used to tune the volumes and gains of the transmitter and reciever.):
-  command 500: Sets the states to begin capturing data from the AudioC library.
-  command 501: Sends the captured data to the matlab interface. Used to test for clipping and adjusting volumes.
-  command 502: Sets the offset of the ADC since its zero isn't truly at zero.
-  command 503: returns to matlab the outputs of the correlation used to find the sync symbol.
-  command 504: Sets the gain of the ADC input. Set to 0 for line-input (audio cord), set to 100 for a passive microphone.
+  - command 0: Setup RX parameters.
+  - command 1: Setup buffer.
+  - command 2: Recieve sync symbol and store for later use.
+  - command 3: Receive fft of reference symbol for FEQ design
+  - command 4: Calculate the energy threshold for  the sync symbol.
 
+  \subsection Mode1 DSP Mode 1 Commands:
+  - command 10: Insert data into buffer.
+  - command 20: Calculate the cross correlation between the buffer and the syncSymbol.
+  - command 21: Find the max value and index of the cross correlation to compare to threshold.
+  - command 22: Return the mean value of the buffer.
+  - command 30: Return the FFT of the symbol at the synchronized index of the buffer.
+  - command 40: Take the FFT of the variable output.
+  - command 50: extract the data carriers by slicing the array containing the FFT of the output variable. These slices correspond to the carrier frequencies.
+  - command 60: Designs the FEQ and returns it as an array.
+  - command 70: Applies the FEQ to the extracted data carriers.  Returns an array of the result
+  - command 80: Demodulates the QAM and sends the result as an array.
+ \subsection Mode2 DSP Mode 2 Commands:
+  - command 210: Sends the values found in the output buffer.
+  - command 220: Synchronizes by taking the correlation and returning the max value and index of the operation.
+  - command 230: Gets the synchronized buffer, performs a FFT, and extracts the data carriers.
+  - command 240: Designs the FEQ and returns it as an array.
+  - command 250: Applies the FEQ to the extracted data carriers.  Returns an array of the result
+  - command 260: Demodulates the QAM and sends the result as an array.
+  \subsection Mode3 DSP Mode 3 commands:
+  - command 310: Applies state machine for the OFDM modem. The command retrieves the buffer and synchronizes on it if it hasn't already. Upon synchronization the command swithces states and takes the FFT of the buffer, and extracts the carrier frequencies. These carrier frequencies are then passed to the FEQ design block (assuming the FEQ has not already been designed). Essentially, this command prepares the modem to demodulate the data symbols inside a single transmission.
+  - command 320: Applies the designed FEQ, and then demodualtes the filtered signal with the QAM:demod command. Command returns a demodulated data symbol.
+  \subsection Mode4 DSP Mode 4 commands:
+  - command 400: Sets the sampling rate for the Audio.C library.
+  - command 410: Sets the state machine appropriately for the OFDM modem to begin its process of syncing, designing the FEQ, and demodulating the QAM data. The bulk of this work is done in the processAudio() ISR.
+  - command 420: Sends the decoded data to the matlab test harness.
+  \subsection ModeD  Debug Commands (used to tune the volumes and gains of the transmitter and reciever.):
+  - command 500: Sets the states to begin capturing data from the AudioC library.
+  - command 501: Sends the captured data to the matlab interface. Used to test for clipping and adjusting volumes.
+  - command 502: Sets the offset of the ADC since its zero isn't truly at zero.
+  - command 503: returns to matlab the outputs of the correlation used to find the sync symbol.
+  - command 504: Sets the gain of the ADC input. Set to 0 for line-input (audio cord), set to 100 for a passive microphone.
 
   Note: This experiment uses Q.15 fixed-point format throughout its code.
 
   \section Mathematics
-  DFT algorithm used by RFFT.
-  \f$ y[k] = \frac{1}{scale_factor}  \sum_{i=0}^{nx-1}( cos(\frac{-2\pi ik}{nx}) + j sin( \frac{-2\pi i k}{nx} )) \f$
 
-  IDFT algorithm used by RIFFT.
-  \f$ y[k] = \frac{1}{scale_factor}  \sum_{i=0}^{nx-1}( cos(\frac{2\pi ik}{nx}) + j sin( \frac{2\pi i k}{nx} )) \f$
+  \subsection fft RFFT:
+    DFT algorithm used by RFFT.
+    \f$ y[k] = \frac{1}{scale_factor}  \sum_{i=0}^{nx-1}( cos(\frac{-2\pi ik}{nx}) + j sin( \frac{-2\pi i k}{nx} )) \f$
 
-  Complex mulitiplication algorithm:
+    IDFT algorithm used by RIFFT.
+    \f$ y[k] = \frac{1}{scale_factor}  \sum_{i=0}^{nx-1}( cos(\frac{2\pi ik}{nx}) + j sin( \frac{2\pi i k}{nx} )) \f$
 
-  Input \f$in1\f$ and \f$in2\f$ are broken into \f$(re1,im1)\f$ and \f$(re2,im2)\f$ respectively. The output
-  \f$ y[n] = (rout[n],iout[n]) \f$  is defined as follows:
+    Complex mulitiplication algorithm:
 
-  \f$ rout[n] = re1[n]*re2[n] -im1[n]*im2[n] \f$
+    Input \f$in1\f$ and \f$in2\f$ are broken into \f$(re1,im1)\f$ and \f$(re2,im2)\f$ respectively. The output
+    \f$ y[n] = (rout[n],iout[n]) \f$  is defined as follows:
 
-  \f$ iout[n] = re1[n]*im2[n] + re2[n]*im1[n] \f$
+    \f$ rout[n] = re1[n]*re2[n] -im1[n]*im2[n] \f$
+
+    \f$ iout[n] = re1[n]*im2[n] + re2[n]*im1[n] \f$
 
   Windowing is accomplished via complex multiplication of an input sequence and
   a window via the above method.
@@ -84,6 +86,9 @@
   a complex multiplication between each other, and an IDFT to pull it
   back into the time domain. The algorithms behind each individual  step is
    described above.
+
+   \subsection cor Correlation:
+
 
 \section Scaling
   Each transform function above has an option to SCALE or NOSCALE.
@@ -657,7 +662,7 @@ void loop()
 }
 
 // Assume mono, only work on inputLeft
-/*
+/** \brief
 ISR triggered by the AudioC library. The processAudio() method by default migrates all the captured
 audio data into buffers useable by the OFDM. When triggered, this method also contains calls to the
 OFDM methods. It will perform the synchronization, design the FEQ and apply and demodulate the data
@@ -795,7 +800,7 @@ void processAudio() {
         }
     }
 }
-/*
+/** \brief
 captureTrigger monitors the values found in the audio buffers. When any value
 found is above CaptureThreshold, the flag is set and processAudio begins sampling.
 This helps filter out all the low level noise we might see when nothing is being transmitted.
@@ -816,7 +821,7 @@ int captureTrigger(const int* leftBuffer, const int* rightBuffer, int length)
     }
     return flag;
 }
-/*
+/** \brief
 copyBuffer copies the buffer of one array to another. It recieves two input pointers and a length, and copies all values source[0<n<length-1] to the destination.
 */
 void copyBuffer(const int* source, int* dest, int length) {

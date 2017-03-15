@@ -1,6 +1,9 @@
+/** \file FEQ.h
+   Designs, implements, and contains supporting methods for the FEQ.
+*/
 //
 //  FEQ.h
-//  
+//
 //
 //  Created by Terry Kong on 2/5/16.
 //
@@ -15,21 +18,27 @@
 #define MAX_BUFFER_SIZE 2048
 
 namespace FEQ {
-    
+
     static long numerator[MAX_BUFFER_SIZE] = {0};
     static int denominator[MAX_BUFFER_SIZE] = {0};
-    
-    // Use long long to multiply to simulate MAC behavior
+
+    /** \brief
+     Use long long to multiply to simulate MAC behavior
+    */
     static long long FIXED_MUL(int a, int b) {
         return ((long long)a*(long long)b);
     }
-    
+    /** \brief
+    Use long long and simulate round-off. Typically used after the MAC operation simulated by FIXED_MUL.
+     */
     static int FIXED_RND(long long a) {
         return ((a + (long long) (1 << (FIXED_FBITS - 1))) >> FIXED_FBITS);
     }
-    
-    // in-place complex multiplication (result in b)
-    // length must be divisible by 2
+
+  /** \brief
+   in-place complex multiplication (result in b)
+   length must be divisible by 2
+*/
     void cmul(const int* a, int* b, int length) {
         int temp;
         for (int i = 0; i < length; i+=2) {
@@ -38,10 +47,11 @@ namespace FEQ {
             b[i] = temp;
         }
     }
-    
-    // in-place complex multiplication (result in c)
-    // length must be divisible by 2
-    // c = (a.*b) * c
+  /** \brief
+     in-place complex multiplication (result in c)
+    length must be divisible by 2
+     c = (a.*b) * c
+    */
     void cmulq15(const int* a, const int* b, int *c, int length) {
         long long real,imag;
         int t[MAX_BUFFER_SIZE];
@@ -50,13 +60,18 @@ namespace FEQ {
         }
         cmul(t, c, length);
     };
-    
-    
-    // x is the fft of the ref symbol
-    // y is the fft of the ref symbol passed thru channel
-    // rFrac is the frac part of the feq filter
-    // rExp is the exp part of the feq filter
-    //      - the filter elements are feq[i] = rFrac[i]*rExp[i]
+
+  /** \brief
+     x is the fft of the ref symbol.
+
+     y is the fft of the ref symbol passed thru channel.
+
+     rFrac is the frac part of the feq filter.
+
+     rExp is the exp part of the feq filter.
+
+          - the filter elements are feq[i] = rFrac[i]*rExp[i].
+*/
     void getFEQ(int *x, int *y, int *rFrac, int *rExp, int length) {
         int denominatorLength = length/2;
         int c,d;
@@ -72,8 +87,12 @@ namespace FEQ {
         }
         ldiv16((LDATA*)numerator,(DATA*)denominator,(DATA*)rFrac,(DATA*)rExp,length);
     }
-    
-    // The application of the FEQ is in-place
+
+    /** \brief
+     In-place application of the FEQ.
+     Requires a pointer to the symbol, the FEQ pointers rFrac and rExp, and int length.
+     Modifies the passed symbol.
+     */
     void applyFEQ(int *symbol, int *rFrac, int *rExp, int length) {
 
         cmulq15(rFrac,rExp,symbol,length);
