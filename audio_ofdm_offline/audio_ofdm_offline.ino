@@ -88,7 +88,23 @@
    described above.
 
    \subsection cor Correlation:
+The Cross-correlation is used to find the sync pulse when initial clock reovery
+is required. Typically, we'll use this to perform the cross-correlation on an input data stream
+and the stored syncSymbol. The cross-correlation is defined as:
 
+\f$(f\star g)[n] = \sum_{n = -\infty}^{\infty} f^{*}[m]g[m+n] \f$
+
+But because our signals are real, we can ignore the complex congugate. Therefore, for our application:
+
+\f$(f\star g)[n] = \sum_{n = -\infty}^{\infty} f[m]g[m+n] \f$
+
+And specifically, we have stored our syncSymbol in reversed order, which means if we set g[n] = syncSymbol, then
+the cross-correlation can be computed with a simple convolution;
+
+\f$(f\star g)[n] = (f * g)[n] =  \sum_{n = -\infty}^{\infty} f[m]g[n-m] \f$
+
+This greatly simplifies our compute constraints because the TI library has a highly efficient implementation of a convolution.
+We use convol1() to perform this operation quickly and effectively.
 
 \section Scaling
   Each transform function above has an option to SCALE or NOSCALE.
